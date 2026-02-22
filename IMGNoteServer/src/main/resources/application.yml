@@ -1,0 +1,24 @@
+# web 端口配置
+server:
+  port: 9633
+  address: 127.0.0.1
+  servlet:
+    context-path: /api
+  tomcat:
+    # 表单 POST 请求的最大大小
+    max-http-form-post-size: 200MB
+    # 禁用请求体吞入限制（-1 表示无限制）
+    max-swallow-size: -1
+
+
+spring:
+  servlet:
+    multipart:
+      # 单个请求体的最大大小
+      max-request-size: 200MB
+      # 单个文件/参数的最大大小
+      max-file-size: 200MB
+      # 启用 multipart 处理
+      enabled: true
+      # 关闭延迟解析，避免大文本解析异常
+      resolve-lazily: false

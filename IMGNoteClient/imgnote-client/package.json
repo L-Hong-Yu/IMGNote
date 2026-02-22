@@ -1,0 +1,101 @@
+{
+  "name": "IMGNote",
+  "version": "1.0.0",
+  "description": "IMGNote",
+  "main": "./out/main/index.js",
+  "author": "example.com",
+  "homepage": "https://electron-vite.org",
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint --cache .",
+    "start": "electron-vite preview",
+    "dev": "chcp 65001 && electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "make:updatezip": "node scripts/make-update-zip.mjs"
+  },
+  "windows": {
+    "requestedExecutionLevel": "requireAdministrator"
+  },
+  "build": {
+    "extraResources": [
+      "./assets/**"
+    ],
+    "productName": "像素笔记",
+    "appId": "com.IMGNote",
+    "directories": {
+      "output": "installPackages"
+    },
+    "afterSign": "./asarmor.js",
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
+    "asar": true,
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "removePackageKeywords": true,
+    "files": [
+      "out/**/*",
+      "node_modules/**/*",
+      "resources/**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "./resources/appLogo.ico",
+      "uninstallerIcon": "./resources/appLogo.ico",
+      "installerHeaderIcon": "./resources/appLogo.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "像素笔记"
+    },
+    "mac": {
+      "icon": "icons/appLogo.icns"
+    },
+    "win": {
+      "artifactName": "${productName}安装包.${version}.exe",
+      "icon": "resources/appLogo.ico",
+      "target": [
+        "nsis"
+      ],
+      "sign": false
+    }
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^4.0.0",
+    "archiver": "^7.0.1",
+    "axios": "1.8.4",
+    "electron-store": "^8.1.0",
+    "element-plus": "^2.9.7",
+    "extract-zip": "^2.0.1",
+    "js-md5": "^0.8.3",
+    "mitt": "^3.0.1",
+    "pinia": "^3.0.1",
+    "v-viewer": "^3.0.21",
+    "vue-eslint-parser": "^10.2.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config": "^2.0.0",
+    "@electron-toolkit/eslint-config-prettier": "^3.0.0",
+    "@element-plus/icons-vue": "^2.3.2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "asarmor": "^2.0.0",
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.0.0",
+    "eslint": "^9.20.1",
+    "eslint-plugin-vue": "^9.32.0",
+    "prettier": "^3.5.1",
+    "sass-embedded": "^1.86.0",
+    "vite": "^6.1.0",
+    "vue": "^3.5.13",
+    "vue-eslint-parser": "^10.2.0"
+  }
+}
