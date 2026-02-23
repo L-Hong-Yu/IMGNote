@@ -30,7 +30,7 @@
   --danger-hover-bg: rgba(220, 38, 38, 0.1);
   --warning: #d97706;
 
-  --overlay-panel: rgba(255, 255, 255, 0.88);
+  --overlay-panel: rgba(255, 255, 255, 0.95);
   --overlay-panel-border: rgba(0, 0, 0, 0.06);
 }
 
@@ -66,7 +66,7 @@
   --danger-hover-bg: rgba(248, 113, 113, 0.15);
   --warning: #fbbf24;
 
-  --overlay-panel: rgba(26, 26, 30, 0.92);
+  --overlay-panel: rgba(26, 26, 30, 0.95);
   --overlay-panel-border: rgba(255, 255, 255, 0.1);
 }
 

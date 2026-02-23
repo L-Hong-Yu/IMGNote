@@ -6,25 +6,39 @@
           <span class="back-arrow">←</span>
         </button>
         <h1 class="editor-title">{{ title || '笔记本' }}</h1>
-        <button
-          type="button"
-          class="search-btn"
-          aria-label="搜索"
-          title="搜索 (Ctrl+F)"
-          @click="openSearch"
-        >
-          <svg
-            class="search-icon-svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
+        <CustomTooltip content="搜索 (Ctrl+F)">
+          <button
+            type="button"
+            class="search-btn"
+            aria-label="搜索"
+            @click="openSearch"
           >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-        </button>
+            <svg
+              class="search-icon-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+        </CustomTooltip>
+        <CustomTooltip :content="wrapEnabled ? '自动换行：已开启' : '自动换行：已关闭'">
+          <button
+            type="button"
+            class="wrap-toggle-btn"
+            :class="{ 'is-on': wrapEnabled }"
+            @click="toggleWrap"
+          >
+            <span class="wrap-toggle-pill">
+              <span class="wrap-toggle-dot"></span>
+              <span class="wrap-toggle-text">{{ wrapEnabled ? '自动换行' : '单行' }}</span>
+            </span>
+          </button>
+        </CustomTooltip>
         <button
           type="button"
           class="enc-btn"
@@ -38,25 +52,28 @@
         >
           {{ isEncrypted ? '加密设置' : '加密' }}
         </button>
-        <button
-          type="button"
-          class="btn btn-primary save-btn"
-          :disabled="needsPassword || !dirty || saving"
-          @click="save"
-        >
-          {{ saving ? '保存中…' : '保存' }}
-        </button>
+        <CustomTooltip content="保存 (Ctrl+S)">
+          <button
+            type="button"
+            class="btn btn-primary save-btn"
+            :disabled="needsPassword || !dirty || saving"
+            @click="save"
+          >
+            {{ saving ? '保存中…' : '保存' }}
+          </button>
+        </CustomTooltip>
       </header>
       <!-- 顶部栏显示模式切换：始终显示 / 自动 / 始终隐藏 -->
-      <button
-        type="button"
-        class="bars-mode-toggle"
-        :class="`mode-${barsMode}`"
-        :title="`工具栏显示：${barsModeLabel}`"
-        @click="cycleBarsMode"
-      >
-        <span class="bars-mode-shape" :class="`shape-${barsMode}`"></span>
-      </button>
+      <CustomTooltip :content="`工具栏显示：${barsModeLabel}`" class="bars-mode-tooltip">
+        <button
+          type="button"
+          class="bars-mode-toggle"
+          :class="`mode-${barsMode}`"
+          @click="cycleBarsMode"
+        >
+          <span class="bars-mode-shape" :class="`shape-${barsMode}`"></span>
+        </button>
+      </CustomTooltip>
     </div>
     <!-- 搜索栏：Ctrl+F 唤起 -->
     <Transition name="search-slide">
@@ -94,39 +111,43 @@
                   : '无匹配'
               }}
             </span>
-            <button
-              type="button"
-              class="editor-search-btn"
-              title="上一个"
-              :disabled="!searchQuery || searchMatches.length === 0"
-              @click="searchPrev"
-            >
-              <span class="editor-search-btn-icon">▲</span>
-            </button>
-            <button
-              type="button"
-              class="editor-search-btn"
-              title="下一个"
-              :disabled="!searchQuery || searchMatches.length === 0"
-              @click="searchNext"
-            >
-              <span class="editor-search-btn-icon">▼</span>
-            </button>
-            <button
-              type="button"
-              class="editor-search-close"
-              title="关闭 (Esc)"
-              @click="closeSearch"
-            >
-              ✕
-            </button>
+            <CustomTooltip content="上一个">
+              <button
+                type="button"
+                class="editor-search-btn"
+                :disabled="!searchQuery || searchMatches.length === 0"
+                @click="searchPrev"
+              >
+                <span class="editor-search-btn-icon">▲</span>
+              </button>
+            </CustomTooltip>
+            <CustomTooltip content="下一个">
+              <button
+                type="button"
+                class="editor-search-btn"
+                :disabled="!searchQuery || searchMatches.length === 0"
+                @click="searchNext"
+              >
+                <span class="editor-search-btn-icon">▼</span>
+              </button>
+            </CustomTooltip>
+            <CustomTooltip content="关闭 (Esc)">
+              <button
+                type="button"
+                class="editor-search-close"
+                @click="closeSearch"
+              >
+                ✕
+              </button>
+            </CustomTooltip>
           </div>
         </div>
       </div>
     </Transition>
     <div class="editor-body">
-      <div class="editor-with-lines">
+      <div class="editor-with-lines" :class="{ 'is-wrap': wrapEnabled }">
         <div
+          v-if="!wrapEnabled"
           ref="linesRef"
           class="editor-lines"
           aria-hidden="true"
@@ -171,7 +192,8 @@
             :style="{
               fontSize: fontSize + 'px',
               lineHeight: lineHeight + 'em',
-              whiteSpace: 'nowrap'
+              whiteSpace: wrapEnabled ? 'pre-wrap' : 'nowrap',
+              overflowX: wrapEnabled ? 'hidden' : 'auto'
             }"
             @input="onContentInput"
             @keydown="onKeydown"
@@ -187,8 +209,8 @@
             @blur="onEditorBlur"
           />
           <footer class="editor-footer" :class="{ 'is-visible': barsVisible }" aria-live="polite">
-            <div class="editor-footer-left">
-              <span class="editor-pos">{{ currentLine }} 行 · {{ currentCol }} 列</span>
+            <div v-if="!wrapEnabled" class="editor-footer-left">
+              <span class="editor-pos"> {{ currentLine }} 行 · {{ currentCol }} 列 </span>
             </div>
             <template v-if="maxBytes != null">
               <div class="editor-footer-center">
@@ -260,6 +282,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PasswordDialog from '@/components/PasswordDialog.vue'
 import EncryptionDialog from '@/components/EncryptionDialog.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
+import CustomTooltip from '@/components/CustomTooltip.vue'
 import md5 from 'js-md5'
 
 const route = useRoute()
@@ -287,6 +310,7 @@ const showEncryptDialog = ref(false)
 const encryptError = ref('')
 const fontSize = ref(15)
 const lineHeight = ref(1.6)
+const wrapEnabled = ref(false)
 
 // 顶部栏/底部栏显示模式：
 // - always：始终显示
@@ -718,7 +742,6 @@ function scrollToMatch(options = {}) {
       el.scrollLeft = targetScrollLeft
     }
   })
-
 }
 
 function searchNext() {
@@ -1128,6 +1151,16 @@ function handleWheel(e) {
   }
 }
 
+function toggleWrap() {
+  wrapEnabled.value = !wrapEnabled.value
+  nextTick(() => {
+    if (linesRef.value && textareaRef.value) {
+      linesRef.value.scrollTop = textareaRef.value.scrollTop
+      updateCurrentLine()
+    }
+  })
+}
+
 onMounted(() => {
   load()
   document.addEventListener('selectionchange', onSelectionChange)
@@ -1228,8 +1261,14 @@ watch([fontSize, lineHeight], () => {
 }
 
 .editor-header-wrap.is-hidden {
-  /* 保留一条细条用于承载模式图标，避免图标只露出一半 */
   height: 7px;
+}
+
+/* 顶部栏模式按钮的 Tooltip：让容器参与绝对定位，以便 tooltip 定位正确 */
+.bars-mode-tooltip {
+  position: absolute;
+  right: 80px;
+  bottom: 0;
 }
 
 .editor-header {
@@ -1553,7 +1592,7 @@ watch([fontSize, lineHeight], () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 14px 8px 16px;
+  padding: 8px 16px;
   border-radius: 10px;
   background: var(--overlay-panel);
   box-shadow: var(--shadow-card);
@@ -1566,7 +1605,10 @@ watch([fontSize, lineHeight], () => {
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
   transform: translateY(150%);
-  transition: transform 0.25s ease;
+}
+
+.editor-with-lines.is-wrap .editor-footer {
+  bottom: 2px;
 }
 
 .editor-footer.is-visible {
@@ -1700,10 +1742,61 @@ watch([fontSize, lineHeight], () => {
   cursor: not-allowed;
 }
 
+/* 自动换行切换胶囊按钮 */
+.wrap-toggle-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+.wrap-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 12px;
+  color: var(--text-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
+}
+
+.wrap-toggle-btn.is-on .wrap-toggle-pill {
+  border-color: var(--accent-subtle);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.wrap-toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.wrap-toggle-btn.is-on .wrap-toggle-dot {
+  background: var(--accent);
+}
+
+.wrap-toggle-text {
+  white-space: nowrap;
+}
+
 /* 顶部栏模式切换：顶部栏右下角小图标（下尖角 / 圆圈 / 上尖角）*/
 .bars-mode-toggle {
   position: absolute;
-  right: 24px;
+  right: -60px;
   bottom: -10px;
   width: 22px;
   height: 26px;

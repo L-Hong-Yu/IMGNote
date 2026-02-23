@@ -353,7 +353,9 @@ onUnmounted(() => {
   color: var(--text-tertiary);
   font-size: 12px;
   backdrop-filter: blur(10px);
-  transition: background 0.25s ease, border-color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
 }
 
 .viewer-info {
@@ -367,7 +369,9 @@ onUnmounted(() => {
   letter-spacing: 0.02em;
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-card);
-  transition: background 0.25s ease, border-color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
 }
 .btn {
   user-select: none;
