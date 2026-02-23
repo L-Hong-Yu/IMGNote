@@ -118,3 +118,18 @@ a {
 a:hover {
   text-decoration: underline;
 }
+/* 全局选中文本样式 */
+::selection {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: inherit;
+}
+
+input::selection {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: inherit;
+}
+
+textarea::selection {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: inherit;
+}

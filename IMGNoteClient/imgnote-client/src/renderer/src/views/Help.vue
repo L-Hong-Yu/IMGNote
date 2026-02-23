@@ -77,7 +77,7 @@
               <strong>请勿对笔记本图片裁剪、缩放、压缩或重新保存</strong
               >（如用其他软件另存、导出为其他格式等），否则写入的数据可能<strong>无法恢复</strong>。
             </li>
-            <li>建议定期使用「导出数据」备份为 .IMGNote 文件，并妥善保留该文件。</li>
+            <li>建议定期使用「导出笔记」或「数据备份」备份为 .IMGNote 文件，并妥善保留该文件。</li>
           </ul>
         </section>
 
@@ -106,10 +106,23 @@
               </dd>
             </div>
             <div class="faq-item">
+              <dt class="faq-q">导出的图片包含笔记本的全部信息吗？</dt>
+              <dd class="faq-a">
+                导出的图片只包含笔记本内部的文字信息，不包含笔记本的名称、分类信息。只有「导出笔记」或「数据备份」导出的
+                .IMGNote 文件才包含笔记本的全部信息。
+              </dd>
+            </div>
+            <div class="faq-item">
               <dt class="faq-q">误删了分类或笔记本怎么办？</dt>
               <dd class="faq-a">
-                应用内删除不可恢复。若有「导出数据」导出的 .IMGNote
-                备份文件，可通过「导入数据」找回对应图片与数据。
+                应用内删除不可恢复。若有「导出笔记」导出的 .IMGNote
+                备份文件，可通过「导入笔记」找回对应图片与数据。
+              </dd>
+            </div>
+            <div class="faq-item">
+              <dt class="faq-q">加密后图片其他人也需要密码吗？</dt>
+              <dd class="faq-a">
+                需要，密码信息会写入图片的像素中，图片分享给其他人后打开也需要密码解锁。
               </dd>
             </div>
           </dl>
@@ -142,6 +155,7 @@ const router = useRouter()
 
 <style scoped>
 .help {
+  user-select: none;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -370,7 +384,6 @@ const router = useRouter()
   88% {
     opacity: 1;
   }
-  92%,
   100% {
     opacity: 0;
   }

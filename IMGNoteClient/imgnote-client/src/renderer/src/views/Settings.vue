@@ -110,7 +110,7 @@
         </section>
 
         <section class="settings-section">
-          <h2 class="section-title">导入数据</h2>
+          <h2 class="section-title">导入笔记</h2>
           <p class="section-desc">从 .IMGNote 文件导入时，是否按笔记内容自动跳过已存在的重复数据</p>
           <label class="settings-check">
             <input
@@ -293,7 +293,7 @@ async function migrateDataBase() {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  border-left: 3px solid var(--accent);
+  border-left: 2px solid var(--accent);
   box-shadow: 0 1px 3px var(--shadow);
   transition:
     border-color 0.2s ease,
@@ -378,6 +378,7 @@ async function migrateDataBase() {
   margin-bottom: 32px;
 }
 .theme-capsule {
+  user-select: none;
   position: relative;
   display: inline-flex;
   align-items: stretch;

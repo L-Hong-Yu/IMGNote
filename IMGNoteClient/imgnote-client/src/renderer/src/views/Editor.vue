@@ -8,6 +8,25 @@
         <h1 class="editor-title">{{ title || '笔记本' }}</h1>
         <button
           type="button"
+          class="search-btn"
+          aria-label="搜索"
+          title="搜索 (Ctrl+F)"
+          @click="openSearch"
+        >
+          <svg
+            class="search-icon-svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+        </button>
+        <button
+          type="button"
           class="enc-btn"
           :disabled="needsPassword || isLoadingContent || saving"
           @click="
@@ -28,7 +47,83 @@
           {{ saving ? '保存中…' : '保存' }}
         </button>
       </header>
+      <!-- 顶部栏显示模式切换：始终显示 / 自动 / 始终隐藏 -->
+      <button
+        type="button"
+        class="bars-mode-toggle"
+        :class="`mode-${barsMode}`"
+        :title="`工具栏显示：${barsModeLabel}`"
+        @click="cycleBarsMode"
+      >
+        <span class="bars-mode-shape" :class="`shape-${barsMode}`"></span>
+      </button>
     </div>
+    <!-- 搜索栏：Ctrl+F 唤起 -->
+    <Transition name="search-slide">
+      <div v-if="showSearchBar" class="editor-search-bar" :class="{ 'is-visible': barsVisible }">
+        <div class="editor-search-inner">
+          <svg
+            class="editor-search-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            type="text"
+            class="editor-search-input"
+            placeholder="搜索文本…"
+            spellcheck="false"
+            autocomplete="off"
+            @keydown.enter.prevent.stop
+            @keydown.shift.enter.prevent.stop
+            @keydown.esc="closeSearch"
+          />
+          <div class="editor-search-actions">
+            <span v-if="searchQuery" class="editor-search-count">
+              {{
+                searchMatches.length > 0
+                  ? `${currentMatchIndex < 0 ? 0 : currentMatchIndex + 1} / ${searchMatches.length}`
+                  : '无匹配'
+              }}
+            </span>
+            <button
+              type="button"
+              class="editor-search-btn"
+              title="上一个"
+              :disabled="!searchQuery || searchMatches.length === 0"
+              @click="searchPrev"
+            >
+              <span class="editor-search-btn-icon">▲</span>
+            </button>
+            <button
+              type="button"
+              class="editor-search-btn"
+              title="下一个"
+              :disabled="!searchQuery || searchMatches.length === 0"
+              @click="searchNext"
+            >
+              <span class="editor-search-btn-icon">▼</span>
+            </button>
+            <button
+              type="button"
+              class="editor-search-close"
+              title="关闭 (Esc)"
+              @click="closeSearch"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
     <div class="editor-body">
       <div class="editor-with-lines">
         <div
@@ -97,7 +192,7 @@
             </div>
             <template v-if="maxBytes != null">
               <div class="editor-footer-center">
-                <span class="editor-progress-label">容量使用率</span>
+                <span class="editor-progress-label">容量使用</span>
                 <div class="editor-progress-track">
                   <div
                     class="editor-progress-fill"
@@ -178,6 +273,12 @@ const dirty = ref(false)
 const isLoadingContent = ref(false)
 const textareaRef = ref(null)
 const linesRef = ref(null)
+const searchInputRef = ref(null)
+
+// 搜索功能
+const showSearchBar = ref(false)
+const searchQuery = ref('')
+const currentMatchIndex = ref(-1)
 const showLeaveConfirm = ref(false)
 const needsPassword = ref(false)
 const passwordError = ref('')
@@ -187,15 +288,48 @@ const encryptError = ref('')
 const fontSize = ref(15)
 const lineHeight = ref(1.6)
 
-// 顶部栏/底部栏：焦点不在输入框时一直显示；在输入框内则鼠标静止一段时间后隐藏，移动后显现
+// 顶部栏/底部栏显示模式：
+// - always：始终显示
+// - auto：自动显示/隐藏（原有逻辑）
+// - hidden：始终隐藏
 const HIDE_BARS_DELAY = 2000
 const editorFocused = ref(false)
 const uiBarsVisible = ref(true)
+const barsMode = ref('auto') // 'always' | 'auto' | 'hidden'
 let hideBarsTimer = null
 
-const barsVisible = computed(() => !editorFocused.value || uiBarsVisible.value)
+const barsVisible = computed(() => {
+  if (barsMode.value === 'always') return true
+  if (barsMode.value === 'hidden') return false
+  return !editorFocused.value || uiBarsVisible.value
+})
+
+const barsModeLabel = computed(() => {
+  if (barsMode.value === 'always') return '始终显示'
+  if (barsMode.value === 'hidden') return '始终隐藏'
+  return '自动显示'
+})
+
+const barsModeShortLabel = computed(() => {
+  if (barsMode.value === 'always') return '显'
+  if (barsMode.value === 'hidden') return '隐'
+  return '自'
+})
+
+function cycleBarsMode() {
+  if (barsMode.value === 'auto') barsMode.value = 'always'
+  else if (barsMode.value === 'always') barsMode.value = 'hidden'
+  else barsMode.value = 'auto'
+}
 
 function onEditorMouseMove() {
+  if (barsMode.value !== 'auto') {
+    // 非自动模式下，不做自动隐藏，只保持当前模式
+    uiBarsVisible.value = true
+    if (hideBarsTimer) clearTimeout(hideBarsTimer)
+    hideBarsTimer = null
+    return
+  }
   if (!editorFocused.value) {
     uiBarsVisible.value = true
     if (hideBarsTimer) clearTimeout(hideBarsTimer)
@@ -312,7 +446,7 @@ function computeByteLengthIncremental(newVal, oldVal, cachedOldBytes) {
     suffixLen < oldLen - prefixLen &&
     suffixLen < newLen - prefixLen &&
     oldVal[oldLen - 1 - suffixLen] === newVal[newLen - 1 - suffixLen]
-    )
+  )
     suffixLen++
   const removed = oldVal.slice(prefixLen, oldLen - suffixLen)
   const added = newVal.slice(prefixLen, newLen - suffixLen)
@@ -433,6 +567,12 @@ const isEncrypted = computed(() => encryptionTypeNumber.value !== 0)
 const currentLine = ref(1)
 const currentCol = ref(1)
 
+// 编辑区独立撤销/重做栈，避免与搜索框共用浏览器撤销导致搜索内容被撤回
+const CONTENT_HISTORY_MAX = 50
+const contentHistory = ref([]) // 每项为一次编辑后的内容；index 指向当前显示的状态
+const contentHistoryIndex = ref(-1)
+let isUndoRedo = false
+
 function updateCurrentLine() {
   const ta = textareaRef.value
   if (!ta) return
@@ -477,6 +617,165 @@ function focusEditor() {
       ta.focus()
     }
   })
+}
+
+// ========== 搜索功能 ==========
+function escapeHtml(s) {
+  const div = document.createElement('div')
+  div.textContent = s
+  return div.innerHTML
+}
+
+function getSearchRegex() {
+  const q = (searchQuery.value || '').trim()
+  if (!q) return null
+  try {
+    return new RegExp(escapeRegex(q), 'g')
+  } catch {
+    return null
+  }
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function findSearchMatches() {
+  const q = (searchQuery.value || '').trim()
+  const text = content.value || ''
+  if (!q || !text) return []
+  const regex = getSearchRegex()
+  if (!regex) return []
+  const matches = []
+  let m
+  regex.lastIndex = 0
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({ start: m.index, end: m.index + m[0].length })
+  }
+  return matches
+}
+
+// 由 searchQuery 与 content 计算匹配，用于跳转和选中（不再做额外自定义高亮层）
+const searchMatches = computed(() => findSearchMatches())
+
+/** 测量文本宽度（需与 textarea 字体一致） */
+function measureTextWidth(text) {
+  const ta = textareaRef.value
+  if (!ta || !text) return 0
+  const m = document.createElement('span')
+  const style = getComputedStyle(ta)
+  m.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${style.font};font-size:${style.fontSize};font-family:${style.fontFamily};line-height:${style.lineHeight};letter-spacing:${style.letterSpacing}`
+  m.textContent = text
+  document.body.appendChild(m)
+  const w = m.offsetWidth
+  m.remove()
+  return w
+}
+
+/** 获取当前行从行首到 pos 的文本 */
+function getLineTextBefore(text, pos) {
+  const last = text.lastIndexOf('\n', pos - 1)
+  return text.slice(last + 1, pos)
+}
+
+function scrollToMatch(options = {}) {
+  const { focusEditor = true } = options
+  const ta = textareaRef.value
+  const matches = searchMatches.value
+  const idx = currentMatchIndex.value
+  if (!ta || !matches.length || idx < 0 || idx >= matches.length) return
+  const { start, end } = matches[idx]
+  const text = content.value || ''
+  if (focusEditor) {
+    ta.focus()
+    ta.setSelectionRange(start, end)
+  }
+
+  const lineH = fontSize.value * lineHeight.value
+  const lineTextBefore = getLineTextBefore(text, start)
+  const lineTextMatch = text.slice(start, end)
+  const xStart = measureTextWidth(lineTextBefore)
+  const xEnd = measureTextWidth(lineTextBefore + lineTextMatch)
+  const xCenter = (xStart + xEnd) / 2
+  const maxScrollLeft = Math.max(0, ta.scrollWidth - ta.clientWidth)
+  const targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, xCenter - ta.clientWidth / 2))
+  const textBefore = text.slice(0, start)
+  const lineNum = countLinesFast(textBefore)
+
+  // 垂直滚动：使选区所在行可见
+  const targetScrollTop = Math.max(0, (lineNum - 2) * lineH)
+  ta.scrollTop = Math.min(ta.scrollTop, targetScrollTop)
+  if (ta.scrollTop + ta.clientHeight < targetScrollTop + lineH * 2) {
+    ta.scrollTop = Math.max(0, targetScrollTop - ta.clientHeight / 2)
+  }
+
+  ta.scrollLeft = targetScrollLeft
+
+  // 延迟一帧再设一次，确保覆盖浏览器 setSelectionRange 后的自动滚动
+  requestAnimationFrame(() => {
+    const el = textareaRef.value
+    if (el) {
+      el.scrollLeft = targetScrollLeft
+    }
+  })
+
+}
+
+function searchNext() {
+  const matches = searchMatches.value
+  if (!matches.length) return
+  if (currentMatchIndex.value < 0) {
+    currentMatchIndex.value = 0
+  } else {
+    currentMatchIndex.value = (currentMatchIndex.value + 1) % matches.length
+  }
+  // 点击「下一个」时，聚焦编辑区并选中当前匹配
+  scrollToMatch({ focusEditor: true })
+}
+
+function searchPrev() {
+  const matches = searchMatches.value
+  if (!matches.length) return
+  if (currentMatchIndex.value < 0) {
+    currentMatchIndex.value = matches.length - 1
+  } else {
+    currentMatchIndex.value =
+      currentMatchIndex.value <= 0 ? matches.length - 1 : currentMatchIndex.value - 1
+  }
+  // 点击「上一个」时，聚焦编辑区并选中当前匹配
+  scrollToMatch({ focusEditor: true })
+}
+
+function openSearch() {
+  showSearchBar.value = true
+  nextTick(() => {
+    searchInputRef.value?.focus()
+  })
+}
+
+function onSearchEnter(isPrev) {
+  if (isPrev) searchPrev()
+  else searchNext()
+}
+
+function closeSearch() {
+  showSearchBar.value = false
+  searchQuery.value = ''
+  currentMatchIndex.value = -1
+}
+
+function onSearchKeydown(e) {
+  if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault()
+    openSearch()
+  }
+  if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault()
+    save()
+  }
+  if (e.key === 'Escape' && showSearchBar.value) {
+    closeSearch()
+  }
 }
 
 /** 计算字符串的MD5哈希值 */
@@ -534,6 +833,8 @@ async function load(showLoading = true) {
   needsPassword.value = false
   passwordError.value = ''
   content.value = normalizeLineEndings(notebookData.value?.data ?? '')
+  contentHistory.value = []
+  contentHistoryIndex.value = -1
   await setMetaEncryptedFlag(isEncryptedNotebook)
 
   const nameFromQuery = route.query?.name
@@ -622,6 +923,8 @@ async function unlock(pwd) {
   needsPassword.value = false
   passwordError.value = ''
   content.value = normalizeLineEndings(notebookData.value?.data ?? '')
+  contentHistory.value = []
+  contentHistoryIndex.value = -1
   await setMetaEncryptedFlag(true)
   await nextTick()
   updateCurrentLine()
@@ -709,6 +1012,17 @@ const TAB_STR = '    '
 function onContentInput(e) {
   const ta = e.target
   const newVal = ta.value
+  const prevVal = content.value
+  if (!isUndoRedo && prevVal !== newVal) {
+    let hist = contentHistory.value.slice()
+    let idx = contentHistoryIndex.value
+    if (idx < hist.length - 1) hist.splice(idx + 1)
+    if (idx < 0) hist = [prevVal, newVal]
+    else hist.push(newVal)
+    if (hist.length > CONTENT_HISTORY_MAX) hist.shift()
+    contentHistory.value = hist
+    contentHistoryIndex.value = hist.length - 1
+  }
   const limit = maxBytes.value
   if (limit != null) {
     const newBytes = computeByteLengthIncremental(newVal, content.value, cachedByteLength.value)
@@ -741,7 +1055,60 @@ function onKeydown(e) {
     }
     return
   }
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    e.preventDefault()
+    editorUndo()
+    return
+  }
+  if (
+    (e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
+    (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)
+  ) {
+    e.preventDefault()
+    editorRedo()
+    return
+  }
   scheduleUpdateCurrentLine()
+}
+
+function editorUndo() {
+  const hist = contentHistory.value
+  let idx = contentHistoryIndex.value
+  if (idx <= 0 || hist.length === 0) return
+  idx -= 1
+  const prevContent = hist[idx]
+  isUndoRedo = true
+  contentHistoryIndex.value = idx
+  content.value = prevContent
+  nextTick(() => {
+    const ta = textareaRef.value
+    if (ta) {
+      ta.value = prevContent
+      ta.selectionStart = ta.selectionEnd = prevContent.length
+      updateCurrentLine()
+    }
+    isUndoRedo = false
+  })
+}
+
+function editorRedo() {
+  const hist = contentHistory.value
+  let idx = contentHistoryIndex.value
+  if (idx >= hist.length - 1 || hist.length === 0) return
+  idx += 1
+  const nextContent = hist[idx]
+  isUndoRedo = true
+  contentHistoryIndex.value = idx
+  content.value = nextContent
+  nextTick(() => {
+    const ta = textareaRef.value
+    if (ta) {
+      ta.value = nextContent
+      ta.selectionStart = ta.selectionEnd = nextContent.length
+      updateCurrentLine()
+    }
+    isUndoRedo = false
+  })
 }
 
 function handleWheel(e) {
@@ -765,12 +1132,14 @@ onMounted(() => {
   load()
   document.addEventListener('selectionchange', onSelectionChange)
   document.addEventListener('wheel', handleWheel, { passive: false })
+  document.addEventListener('keydown', onSearchKeydown)
   onEditorMouseMove()
 })
 
 onUnmounted(() => {
   document.removeEventListener('selectionchange', onSelectionChange)
   document.removeEventListener('wheel', handleWheel)
+  document.removeEventListener('keydown', onSearchKeydown)
   if (hideBarsTimer) clearTimeout(hideBarsTimer)
   if (statsThrottleTimer) clearTimeout(statsThrottleTimer)
   if (truncateCheckTimer) clearTimeout(truncateCheckTimer)
@@ -823,6 +1192,15 @@ watch([content, maxBytes], () => {
   truncateCheckTimer = setTimeout(runTruncateCheck, TRUNCATE_CHECK_MS)
 })
 
+// 搜索：输入变化时仅重置当前匹配索引，不做任何自定义高亮或自动跳转
+watch(
+  searchQuery,
+  () => {
+    currentMatchIndex.value = -1
+  },
+  { flush: 'sync' }
+)
+
 watch([fontSize, lineHeight], () => {
   nextTick(() => {
     if (linesRef.value && textareaRef.value) {
@@ -842,14 +1220,16 @@ watch([fontSize, lineHeight], () => {
 }
 
 .editor-header-wrap {
+  position: relative;
   flex-shrink: 0;
   height: 60px;
-  overflow: hidden;
+  overflow: visible;
   transition: height 0.25s ease;
 }
 
 .editor-header-wrap.is-hidden {
-  height: 0;
+  /* 保留一条细条用于承载模式图标，避免图标只露出一半 */
+  height: 7px;
 }
 
 .editor-header {
@@ -934,6 +1314,159 @@ watch([fontSize, lineHeight], () => {
 .enc-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.search-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.search-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.search-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ========== 搜索栏 ========== */
+.editor-search-bar {
+  flex-shrink: 0;
+  padding: 10px 20px 14px;
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-muted) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-search-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.editor-search-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.editor-search-input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.editor-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.editor-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-search-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5em;
+  text-align: center;
+}
+
+.editor-search-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.editor-search-btn:hover:not(:disabled) {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.editor-search-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editor-search-btn-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.editor-search-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.editor-search-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.search-slide-enter-active,
+.search-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.search-slide-enter-from,
+.search-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* 编辑页全局选中高亮（textarea、input 等） */
+.editor textarea::selection,
+.editor input::selection {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: inherit;
 }
 
 .editor-body {
@@ -1026,7 +1559,9 @@ watch([fontSize, lineHeight], () => {
   box-shadow: var(--shadow-card);
   border: 1px solid var(--overlay-panel-border);
   pointer-events: none;
-  transition: background 0.25s ease, border-color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
   font-size: 12px;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
@@ -1163,6 +1698,79 @@ watch([fontSize, lineHeight], () => {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 顶部栏模式切换：顶部栏右下角小图标（下尖角 / 圆圈 / 上尖角）*/
+.bars-mode-toggle {
+  position: absolute;
+  right: 24px;
+  bottom: -10px;
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border-bottom: 1px solid var(--border);
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.12s;
+  z-index: 20;
+  clip-path: inset(8px 0 0 0);
+}
+
+.bars-mode-toggle:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-subtle);
+  transform: translateY(-1px);
+}
+
+.bars-mode-toggle.mode-always {
+  border-color: var(--accent-subtle);
+}
+
+.bars-mode-toggle.mode-hidden {
+  opacity: 0.7;
+}
+
+.bars-mode-shape {
+  position: absolute;
+  bottom: 6px;
+  display: block;
+}
+
+/* 始终隐藏：向下小尖角 */
+.bars-mode-shape.shape-hidden {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 7px solid var(--text-secondary);
+}
+
+/* 自动：小圆圈 */
+.bars-mode-shape.shape-auto {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 2px solid var(--text-secondary);
+}
+
+/* 始终显示：向上小尖角 */
+.bars-mode-shape.shape-always {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 7px solid var(--text-secondary);
 }
 
 .editor-with-lines::-webkit-scrollbar {

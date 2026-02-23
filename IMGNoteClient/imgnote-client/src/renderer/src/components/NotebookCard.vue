@@ -337,7 +337,7 @@ async function renameNotebook(e) {
   right: 0;
   bottom: 0;
   z-index: 2;
-  padding: 10px 12px 12px;
+  padding: 20px 12px 12px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
   color: #fff;
   display: flex;

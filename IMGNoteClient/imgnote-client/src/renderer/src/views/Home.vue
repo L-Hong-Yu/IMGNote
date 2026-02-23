@@ -64,7 +64,7 @@
             :disabled="exportingDb || notebookStore.list.length === 0"
             @click="openExportModal"
           >
-            {{ exportingDb ? '导出中…' : '导出数据' }}
+            {{ exportingDb ? '导出中…' : '导出笔记' }}
           </button>
           <button
             type="button"
@@ -72,7 +72,7 @@
             :disabled="importingDb"
             @click="importDataBaseFile"
           >
-            {{ importingDb ? '导入中…' : '导入数据' }}
+            {{ importingDb ? '导入中…' : '导入笔记' }}
           </button>
           <button type="button" class="btn btn-primary" @click="startImport">导入图片</button>
         </div>
@@ -170,11 +170,31 @@
         </p>
         <div class="modal-field">
           <label>目标分类</label>
-          <select v-model="importTargetCategoryId" class="modal-select">
-            <option v-for="c in notebookStore.categories" :key="c.id" :value="c.id">
-              {{ c.name }}
-            </option>
-          </select>
+          <div class="category-select" @click="toggleImportCategoryDropdown" ref="importCategoryDropdownRef">
+            <div class="category-select-current">
+              <span
+                class="category-select-dot"
+                :style="{ background: currentImportCategory?.color || '#6b7fd7' }"
+              ></span>
+              <span class="category-select-name">
+                {{ currentImportCategory?.name || '未选择分类' }}
+              </span>
+              <span class="category-select-chevron">▾</span>
+            </div>
+            <div v-if="importCategoryDropdownOpen" class="category-select-dropdown">
+              <button
+                v-for="c in notebookStore.categories"
+                :key="c.id"
+                type="button"
+                class="category-select-option"
+                :class="{ active: c.id === importTargetCategoryId }"
+                @click.stop="selectImportCategory(c.id)"
+              >
+                <span class="category-select-dot" :style="{ background: c.color || '#6b7fd7' }"></span>
+                <span class="category-select-name">{{ c.name }}</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="modal-field">
           <label>笔记本名称（可选）</label>
@@ -228,6 +248,8 @@ const appStore = useAppStore()
 const notebookStore = useNotebookStore()
 const importModalVisible = ref(false)
 const importTargetCategoryId = ref('_default')
+const importCategoryDropdownOpen = ref(false)
+const importCategoryDropdownRef = ref(null)
 const importPendingItems = ref([])
 const importing = ref(false)
 const exportingDb = ref(false)
@@ -265,6 +287,20 @@ const exportSelectedCount = computed(() => exportSelectedKeys.value.size)
 
 function exportNoteKey(nb) {
   return `${nb.categoryId}|${nb.id}`
+}
+
+const currentImportCategory = computed(() => {
+  const list = notebookStore.categories || []
+  return list.find((c) => c.id === importTargetCategoryId.value) || list[0] || null
+})
+
+function toggleImportCategoryDropdown() {
+  importCategoryDropdownOpen.value = !importCategoryDropdownOpen.value
+}
+
+function selectImportCategory(id) {
+  importTargetCategoryId.value = id
+  importCategoryDropdownOpen.value = false
 }
 
 function isExportNoteSelected(nb) {
@@ -593,6 +629,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .main {
+  user-select: none;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -791,14 +828,87 @@ onUnmounted(() => {
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
-.modal-select {
+.category-select {
+  position: relative;
   width: 100%;
+}
+.category-select-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 12px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-page);
-  color: var(--text-primary);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.category-select-current:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-subtle);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.category-select-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.category-select-name {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-select-chevron {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.category-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+  overflow-y: auto;
+}
+.category-select-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: left;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.category-select-option:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.category-select-option.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text-primary);
 }
 .modal-actions {
   display: flex;
