@@ -97,7 +97,7 @@ function startBackendServer() {
 
   const options = {
     cwd: path.dirname(jarPath),
-    windowsHide: true,
+    windowsHide: true
     // 后端日志
     // stdio: 'inherit'
   }

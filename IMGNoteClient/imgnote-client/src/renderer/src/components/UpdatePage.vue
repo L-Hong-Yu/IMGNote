@@ -35,7 +35,18 @@
         </div>
 
         <div v-if="state.stage === 'error'" class="error">
-          {{ state.error || '更新失败，请稍后重试。' }}
+          <span>{{ state.error || '更新失败，请稍后重试。' }}</span>
+          <p class="error-hint">
+            请前往 GitHub 下载最新版本：
+            <a
+              :href="GITHUB_RELEASES_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="error-link"
+            >
+              前往下载
+            </a>
+          </p>
         </div>
 
         <details v-if="info.notes" class="notes">
@@ -61,6 +72,9 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue'
+
+/** 更新失败时引导用户到此页面下载 */
+const GITHUB_RELEASES_URL = 'https://github.com/L-Hong-Yu/IMGNote/releases'
 
 const props = defineProps({
   info: {
@@ -336,6 +350,20 @@ function skip() {
   transition:
     background 0.25s ease,
     color 0.25s ease;
+}
+.error-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.error-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.error-link:hover {
+  text-decoration: underline;
 }
 .notes {
   margin-top: 14px;

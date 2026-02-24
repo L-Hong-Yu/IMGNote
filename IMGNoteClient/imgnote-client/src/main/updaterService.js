@@ -52,8 +52,10 @@ function pickBestAsset(release) {
 
   // 优先：NSIS 安装包 exe（Windows）
   const exe =
-    byName((n) => n.endsWith('.exe') && (n.includes('setup') || n.includes('安装') || n.includes('像素笔记'))) ||
-    byName((n) => n.endsWith('.exe'))
+    byName(
+      (n) =>
+        n.endsWith('.exe') && (n.includes('setup') || n.includes('安装') || n.includes('像素笔记'))
+    ) || byName((n) => n.endsWith('.exe'))
   if (exe && assetUrl(exe)) {
     return {
       type: 'exe',
@@ -83,7 +85,17 @@ function pickBestAsset(release) {
 const RELEASES_URL = `${GITHUB_API_BASE}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
-const NETWORK_ERRORS = ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'SOCKET_HANG_UP', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'READ ECONNRESET', 'SOCKET HANG UP']
+const NETWORK_ERRORS = [
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'SOCKET_HANG_UP',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'READ ECONNRESET',
+  'SOCKET HANG UP'
+]
 
 function isRetryableError(e) {
   const code = e?.code || ''
@@ -123,6 +135,10 @@ export async function checkForUpdate() {
       })
     )
     releases = Array.isArray(data) ? data : []
+    console.log(
+      'GitHub Releases:',
+      releases.map((r) => r.tag_name || r.name)
+    )
   } catch (e) {
     return {
       ok: false,
