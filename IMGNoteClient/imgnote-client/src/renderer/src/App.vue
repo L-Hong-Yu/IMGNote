@@ -120,6 +120,7 @@ function handleForceQuit() {
 
 <style scoped>
 .splash {
+  user-select: none;
   position: fixed;
   inset: 0;
   z-index: 9999;

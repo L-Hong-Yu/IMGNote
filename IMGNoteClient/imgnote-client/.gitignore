@@ -9,3 +9,4 @@ installPackages
 .vscode
 .git
 /assets/
+/env/

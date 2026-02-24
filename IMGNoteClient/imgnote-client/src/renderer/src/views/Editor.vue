@@ -696,6 +696,48 @@ function measureTextWidth(text) {
   return w
 }
 
+/**
+ * 在开启自动换行时，根据 textarea 的实际渲染样式估算指定光标位置的视觉纵向偏移，
+ * 用于计算 scrollTop，使匹配位置真正出现在可见区域
+ */
+function getCaretVisualOffset(ta, pos) {
+  if (!ta) return { top: 0, left: 0 }
+  const text = ta.value || ''
+  const safePos = Math.max(0, Math.min(pos, text.length))
+  const style = getComputedStyle(ta)
+
+  const div = document.createElement('div')
+  div.style.position = 'absolute'
+  div.style.visibility = 'hidden'
+  div.style.whiteSpace = 'pre-wrap'
+  div.style.wordWrap = 'break-word'
+  div.style.overflow = 'hidden'
+  div.style.boxSizing = style.boxSizing
+  div.style.width = ta.clientWidth + 'px'
+  div.style.padding = style.padding
+  div.style.border = style.border
+  div.style.font = style.font
+  div.style.lineHeight = style.lineHeight
+  div.style.letterSpacing = style.letterSpacing
+
+  const before = text.slice(0, safePos)
+  const after = text.slice(safePos)
+
+  const beforeNode = document.createTextNode(before)
+  const caretSpan = document.createElement('span')
+  caretSpan.textContent = after.length ? after[0] : '\u200b'
+
+  div.appendChild(beforeNode)
+  div.appendChild(caretSpan)
+
+  document.body.appendChild(div)
+  const top = caretSpan.offsetTop
+  const left = caretSpan.offsetLeft
+  document.body.removeChild(div)
+
+  return { top, left }
+}
+
 /** 获取当前行从行首到 pos 的文本 */
 function getLineTextBefore(text, pos) {
   const last = text.lastIndexOf('\n', pos - 1)
@@ -713,6 +755,19 @@ function scrollToMatch(options = {}) {
   if (focusEditor) {
     ta.focus()
     ta.setSelectionRange(start, end)
+  }
+  // 自动换行：根据实际渲染后的光标位置精确计算 scrollTop，使匹配行在可见区域内
+  if (wrapEnabled.value) {
+    requestAnimationFrame(() => {
+      const el = textareaRef.value
+      if (!el) return
+      const { top } = getCaretVisualOffset(el, start)
+      const targetTop = Math.max(0, top - el.clientHeight / 2)
+      el.scrollTop = targetTop
+      // 自动换行模式下不需要横向滚动，保持在起始位置即可
+      el.scrollLeft = 0
+    })
+    return
   }
 
   const lineH = fontSize.value * lineHeight.value
